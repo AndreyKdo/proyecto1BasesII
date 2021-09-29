@@ -1,0 +1,12 @@
+Autor: David Hernández
+Carné: 2020041924
+--------------------------------
+
+// docker network create --driver bridge --subnet 11.0.0.0/28 Proyecto1_Bd2
+
+
+docker volume create vol_shard1_1
+docker volume create vol_shard2_2
+
+docker run -d  -v vol_shard1_1:/data/configdb -p 27018:27017 --name shard1_1 mongo mongod --port 27017 --shardsvr --bind_ip_all --replSet "repShard1" --dbpath /data/configdb
+docker run -d -v vol_shard2_2:/data/db -p 27019:27017 --name shard2_2 mongo mongod --port 27017 --shardsvr --bind_ip_all --replSet "repshard2" --dbpath /data/configdb
