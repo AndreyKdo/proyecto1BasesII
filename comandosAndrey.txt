@@ -1,0 +1,39 @@
+//Andrey Picado Arias
+//comandos de la network de Andrey
+docker network create --driver bridge --subnet 172.16.0.0/28 Proyecto1_Bd2
+//CFG 3
+docker volume create vol_cfg_server3
+docker run -d --net Proyecto1_Bd2 --ip 172.16.0.3 -v vol_cfg_server3:/data/configdb -p 27018:27017 --name cfg_server3 mongo mongod --port 27017 --configsvr --bind_ip_all --replSet "repcfg" --dbpath /data/configdb
+docker exec -it cfg_server3 mongo
+//initiate (lo ejecutó Kevin)
+rs.initiate(
+  {
+    _id: "repcfg",
+    configsvr: true,
+    members: [
+      { _id : 0, host : "25.5.99.67:27018" },
+      { _id : 1, host : "25.5.150.109:27017" },
+      { _id : 2, host : "25.6.191.202:27018" }
+    ]
+  }
+)
+
+//shard 3_1
+docker volume create vol_shard3_1
+docker run -d --net Proyecto1_Bd2 --ip 172.16.0.2 -v vol_shard3_1:/data/db -p27019:27017 --name shard3_1 mongo mongod --port 27017 --shardsvr --bind_ip_all --replSet "repshard3" --dbpath /data/configdb
+
+docker exec -it shard3_1 mongo
+//initiate (lo ejecutó Kevin)
+rs.initiate(
+  {
+    _id: "repshard3",
+    members: [
+      { _id : 0, host : "25.6.191.202:27019" },
+      { _id : 1, host : "25.5.150.109:27018" }
+    ]
+  }
+);
+
+//router
+docker run -d --net Proyecto1_Bd2 --ip 172.16.0.4 -p 27017:27017 --name router2 mongo mongos --port 27017 --configdb repcfg/25.5.99.67:27018,25.5.150.109:27017,25.6.191.202:27018 --bind_ip_all
+
