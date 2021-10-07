@@ -1,0 +1,99 @@
+docker network create --driver bridge --subnet 12.0.0.32/28 Proyecto1_Bd2
+
+
+docker run -d --net Proyecto1_Bd2 --ip 12.0.0.34 -v vol_CFG_2:/data/configdb  -p 27017:27017 --name cfg_server2 mongo mongod --port 27017 --configsvr  --bind_ip_all --replSet "repcfg" --dbpath /data/configdb
+
+
+docker run -d --net Proyecto1_Bd2 --ip 12.0.0.36 -v vol_shard3_2:/data/db -p27018:27017 --name shard3_2 mongo mongod --port 27017 --shardsvr --bind_ip_all --replSet "repshard3" --dbpath /data/configdb
+
+
+docker run -d --net Proyecto1_Bd2 --ip 12.0.0.35 -v vol_shard2_1:/data/db -p27020:27017 --name shard2_1 mongo mongod --port 27017 --shardsvr --bind_ip_all --replSet "repshard2" --dbpath /data/configdb
+
+
+docker run -d --net Proyecto1_Bd2 --ip 10.0.0.37 -p27019:27017 --name Arbitro_Shard_2 mongo mongod --port 27017 --replSet repshard2
+
+rs.initiate(
+  {
+    _id: "repcfg",
+    configsvr: true,
+    members: [
+      { _id : 0, host : "25.5.99.67:27018" },
+      { _id : 1, host : "25.5.150.109:27017" },
+      { _id : 2, host : "25.6.191.202:27018" }
+    ]
+  }
+)
+
+rs.initiate(
+  {
+    _id: "repshard3",
+    members: [
+      { _id : 0, host : "25.6.191.202:27019" },
+      { _id : 1, host : "25.5.150.109:27018" }
+    ]
+  }
+);
+
+rs.initiate(
+  {
+    _id: "repshard2",
+    members: [
+      { _id : 0, host : "25.6.86.167:27019" },
+      { _id : 1, host : "25.5.150.109:27020" }
+    ]
+  }
+);
+
+//3
+rs.addArb("25.5.99.67:27019");
+
+//2
+rs.addArb("25.5.150.109:27019");
+
+sh.addShard("repShard1/25.5.99.67:27020");
+sh.addShard("repshard2/25.5.150.109:27020");
+sh.addShard("repshard3/25.6.191.202:27019");
+
+sh.addShardTag("repShard1", "Private room in house");
+sh.addShardTag("repshard2", "Entire house"); 
+sh.addShardTag("repshard2", "Private room in apartment"); 
+sh.addShardTag("repshard3", "Entire condominium"); 
+sh.addShardTag("repshard3", "Entire place"); 
+sh.addShardTag("repShard1", "Entire apartment");
+
+sh.addTagRange( "Airbnb.Listings",
+                {property_type: "Private room in house"},
+                {property_type: "Private room in house999"},
+                "Private room in house"
+              ) 
+sh.addTagRange( "Airbnb.Listings",
+                {property_type: "Entire apartment"},
+                {property_type: "Entire apartment999"},
+                "Entire apartment"
+              ) 
+sh.addTagRange( "Airbnb.Listings",
+                {property_type: "Entire house"},
+                {property_type: "Entire house999"},
+                "Entire house"
+              ) 
+sh.addTagRange( "Airbnb.Listings",
+                {property_type: "Private room in apartment"},
+                {property_type: "Private room in apartment999"},
+                "Private room in apartment"
+              ) 
+sh.addTagRange( "Airbnb.Listings",
+                {property_type: "Entire condominium"},
+                {property_type: "Entire condominium999"},
+                "Entire condominium"
+              ) 
+sh.addTagRange( "Airbnb.Listings",
+                {property_type: "Entire place"},
+                {property_type: "Entire place999"},
+                "Entire place"
+              ) 
+sh.enableSharding("Airbnb");
+
+sh.shardCollection("Airbnb.Listings", { property_type: 1 } )
+
+
+netsh interface portproxy add v4tov4 listenaddress = 25.5.150.109 listenport = 1233 connectaddress = 25.6.191.202 connectport = 1433
