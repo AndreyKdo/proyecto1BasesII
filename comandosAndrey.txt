@@ -20,7 +20,7 @@ rs.initiate(
 
 //shard 3_1
 docker volume create vol_shard3_1
-docker run -d --net Proyecto1_Bd2 --ip 172.16.0.2 -v vol_shard3_1:/data/db -p27019:27017 --name shard3_1 mongo mongod --port 27017 --shardsvr --bind_ip_all --replSet "repshard3" --dbpath /data/configdb
+docker run -d --net Proyecto1_Bd2 --ip 172.16.0.2 -v vol_shard3_1:/data/db -p 27019:27017 --name shard3_1 mongo mongod --port 27017 --shardsvr --bind_ip_all --replSet "repshard3" --dbpath /data/configdb
 
 docker exec -it shard3_1 mongo
 //initiate (lo ejecutó Kevin)
