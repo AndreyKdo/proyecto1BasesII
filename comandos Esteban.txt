@@ -1,0 +1,122 @@
+docker network create --driver bridge --subnet 12.0.0.0/28 Proyecto1_Bd2
+
+
+
+---cfg router 1
+
+docker volume create vol_cfg_server1
+
+
+docker run -d --net Proyecto1_Bd2 --ip 12.0.0.3   -v vol_cfg_server1:/data/configdb  -p 27018:27017 --name cfg_server1 mongo mongod --port 27017 --configsvr  --bind_ip_all --replSet "repcfg" --dbpath /data/configdb
+-- Arbitro Shard
+
+docker run -d --net Proyecto1_Bd2 --ip 12.0.0.4 -p 27019:27017 --name Arbitro_Shard_3 mongo mongod --port 27017 --bind_ip_all --replSet repshard3
+
+rs.addArb("25.5.99.67:27019")
+
+
+-- Shard 1.2
+docker volume create vol_shard1_2
+
+
+docker run -d --net Proyecto1_Bd2 --ip 12.0.0.5  -v vol_shard1_2:/data/configdb  -p 27020:27017 --name shard1_2 mongo mongod --port 27017 --shardsvr  --bind_ip_all --replSet "repShard1" --dbpath /data/configdb
+
+docker exec -it shard1_2 bash
+rs.initiate(
+  {
+    _id: "repShard1",
+    members: [
+      { _id : 0, host : "25.6.86.167:27018" },
+      { _id : 1, host : "25.5.99.67:27020" }
+    ]
+  }
+);
+
+-- Router 1
+
+
+
+
+docker run -d -p 27017:27017 --name router1 mongo mongos --port 27017 --configdb repcfg/25.5.99.67:27018,25.5.150.109:27017,25.6.191.202:27018 --bind_ip_all 
+
+
+
+docker exec -it cfg_server1 bash
+
+
+rs.initiate(
+  {
+    _id: "repcfg",
+    configsvr: true,
+    members: [
+      { _id : 0, host : "25.5.99.67:27018" },
+      { _id : 1, host : "25.5.150.109:27017" },
+      { _id : 2, host : "25.6.191.202:27018" }
+    ]
+  }
+)
+
+
+
+sh.addShard("repShard1/25.5.99.67:27020");
+
+
+
+tagrange/sharding router1
+
+
+
+sh.addTagRange( "Airbnb.Listings",
+                {property_type: "Private room in house"},
+                {property_type: "Private room in house999"},
+                "Private room in house"
+              ) 
+sh.addTagRange( "Airbnb.Listings",
+                {property_type: "Entire apartment"},
+                {property_type: "Entire apartment999"},
+                "Entire apartment"
+              ) 
+sh.addTagRange( "Airbnb.Listings",
+                {property_type: "Entire house"},
+                {property_type: "Entire house999"},
+                "Entire house"
+              ) 
+sh.addTagRange( "Airbnb.Listings",
+                {property_type: "Private room in apartment"},
+                {property_type: "Private room in apartment999"},
+                "Private room in apartment"
+              ) 
+sh.addTagRange( "Airbnb.Listings",
+                {property_type: "Entire condominium"},
+                {property_type: "Entire condominium999"},
+                "Entire condominium"
+              ) 
+sh.addTagRange( "Airbnb.Listings",
+                {property_type: "Entire place"},
+                {property_type: "Entire place999"},
+                "Entire place"
+              )
+
+sh.enableSharding("Airbnb");
+
+sh.shardCollection("Airbnb.Listings", { property_type: 1 } )
+
+
+
+start
+
+
+docker start shard1_2
+docker start Arbitro_Shard_3
+docker start cfg_server1
+docker start router1
+
+stop
+
+
+docker stop router1
+docker stop Arbitro_Shard_3
+docker stop shard1_2
+docker stop cfg_server1
+
+5
