@@ -37,3 +37,12 @@ rs.initiate(
 //router
 docker run -d --net Proyecto1_Bd2 --ip 172.16.0.4 -p 27017:27017 --name router2 mongo mongos --port 27017 --configdb repcfg/25.5.99.67:27018,25.5.150.109:27017,25.6.191.202:27018 --bind_ip_all
 
+//ver router
+docker exec -it router2 mongo
+rs.status()
+
+//port forwarding al monolítico
+netsh interface portproxy add v4tov4 listenaddress=25.6.191.202 listenport=50000 connectaddress=25.6.86.167 connectport=27016
+
+//ver port forwarding
+netsh interface portproxy show v4tov4
