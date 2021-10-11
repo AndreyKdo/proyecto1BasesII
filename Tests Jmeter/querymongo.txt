@@ -1,0 +1,23 @@
+import com.mongodb.client.MongoCollection;
+import static com.mongodb.client.model.Filters.*;
+import com.mongodb.DBCursor;
+import com.mongodb.client.FindIterable;
+import org.bson.Document;
+import java.util.List;
+import org.bson.types.ObjectId;
+
+
+try {
+	MongoCollection<Document> collection = vars.getObject("collectionC");
+	List<Document> iterable = collection.find(or(eq("property_type", "Entire condominium"), eq("property_type", "Entire place"),eq("property_type", "Private room in apartment"), eq("property_type", "Entire house"))).limit(3000).asList();
+	//Intercambiable por cualquier query de lectura para mongo
+	
+
+    
+	return iterable;
+}
+catch (Exception e) {
+	SampleResult.setSuccessful(false);
+	SampleResult.setResponseCode("500");
+	SampleResult.setResponseMessage("Exception: " + e);
+}
